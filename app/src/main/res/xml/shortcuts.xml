@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="id_open_feature"
+        android:enabled="true"
+        android:icon="@drawable/ic_launcher_foreground"
+        android:shortcutShortLabel="@string/shortcut_label_special"
+        android:shortcutLongLabel="@string/shortcut_label_special">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.apero.testcrawldata"
+            android:targetClass="com.apero.testcrawldata.MainActivity" />
+    </shortcut>
+</shortcuts>

@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">test crawl data</string>
+    <string name="shortcut_label_special">Mở tính năng đặc biệt</string>
+
 </resources>
