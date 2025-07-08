@@ -8,8 +8,21 @@ import android.content.Context
 import android.content.Intent
 import androidx.annotation.RequiresPermission
 import com.apero.testcrawldata.alarmreceiver.AlarmReceiver
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
 class AlarmRepositoryImpl : AlarmRepository {
+
+    private val _timeAlarm = MutableStateFlow<Long>(0L) // đơn vị: giây còn lại
+    override val timeAlarm = _timeAlarm.asStateFlow()
+
+    private var countdownJob: Job? = null
+
     @SuppressLint("ScheduleExactAlarm")
     @RequiresPermission(Manifest.permission.SCHEDULE_EXACT_ALARM)
     override fun setAlarm(context: Context, requestTime: Long) {
@@ -23,14 +36,27 @@ class AlarmRepositoryImpl : AlarmRepository {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        // Đặt thời gian: 5 giây sau thời điểm hiện tại
-        val triggerTime = System.currentTimeMillis() + requestTime
+        val triggerTime = System.currentTimeMillis() + requestTime * 1000L
 
-        // Khởi tạo alarm
         alarmManager.setExact(
             AlarmManager.RTC_WAKEUP,
             triggerTime,
             pendingIntent
         )
+
+        // Bắt đầu đếm ngược
+        startCountdown(requestTime)
+    }
+
+    private fun startCountdown(seconds: Long) {
+        countdownJob?.cancel()
+        countdownJob = CoroutineScope(Dispatchers.Default).launch {
+            var remaining = seconds
+            while (remaining >= 0) {
+                _timeAlarm.emit(remaining)
+                delay(1000L)
+                remaining--
+            }
+        }
     }
 }

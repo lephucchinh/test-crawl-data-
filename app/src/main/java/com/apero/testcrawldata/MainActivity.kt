@@ -29,14 +29,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import com.apero.testcrawldata.alarmreceiver.repository.AlarmRepository
 import com.apero.testcrawldata.alarmreceiver.repository.AlarmRepositoryImpl
 import com.apero.testcrawldata.permissionadmin.MyDeviceAdminReceiver
-import com.apero.testcrawldata.service.CountdownService
-import com.apero.testcrawldata.service.CountdownServiceConnector
 import com.apero.testcrawldata.ui.theme.TestCrawlDataTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -46,13 +45,7 @@ import org.jsoup.Jsoup
 
 class MainActivity : ComponentActivity() {
     private val alarmRepository: AlarmRepository by lazy { AlarmRepositoryImpl() }
-    private val _time = MutableLiveData<String>()
-    val time: LiveData<String> get() = _time
 
-    fun updateTime(newTime: String) {
-        _time.value = newTime
-    }
-    private lateinit var countdownConnector: CountdownServiceConnector
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -60,7 +53,7 @@ class MainActivity : ComponentActivity() {
         requestPermission()
         setContent {
             TestCrawlDataTheme {
-                val timeState by time.observeAsState("0")
+                val timeState by alarmRepository.timeAlarm.collectAsStateWithLifecycle()
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
@@ -73,34 +66,18 @@ class MainActivity : ComponentActivity() {
                         Button(
                             modifier = Modifier.size(120.dp, 50.dp),
                             onClick = {
-                                countdownConnector.startCountdown(5)
                                 alarmRepository.setAlarm(this@MainActivity, 5) }
                         ) {
                             Text("Set Alarm")
                         }
                         Spacer(modifier = Modifier.height(16.dp))
-                        Text(timeState)
+                        Text(timeState.toString())
                     }
                 }
             }
         }
     }
 
-    override fun onStart() {
-        super.onStart()
-        countdownConnector = CountdownServiceConnector(
-            this,
-            onTickCallBack = { millis -> runOnUiThread { updateTime("${millis / 1000}s") } },
-            onFinishCallBack = { runOnUiThread { updateTime("0s") } }
-        )
-
-        countdownConnector.bind()
-    }
-
-    override fun onStop() {
-        super.onStop()
-        countdownConnector.unbind()
-    }
 
     private fun requestPermission() {
         val componentName = ComponentName(this, MyDeviceAdminReceiver::class.java)
