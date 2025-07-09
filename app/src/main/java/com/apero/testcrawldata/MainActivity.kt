@@ -3,6 +3,7 @@ package com.apero.testcrawldata
 import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -22,16 +23,17 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.apero.testcrawldata.DI.DIContainer.alarmRepository
 import com.apero.testcrawldata.alarmreceiver.repository.AlarmRepository
 import com.apero.testcrawldata.alarmreceiver.repository.AlarmRepositoryImpl
 import com.apero.testcrawldata.permissionadmin.MyDeviceAdminReceiver
+import com.apero.testcrawldata.service.CountdownService
 import com.apero.testcrawldata.ui.theme.TestCrawlDataTheme
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
 class MainActivity : ComponentActivity() {
-    private val alarmRepository: AlarmRepository by lazy { AlarmRepositoryImpl() }
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -70,6 +72,10 @@ class MainActivity : ComponentActivity() {
                                 val value = textState.value.toLongOrNull() ?: 0L
                                 if(value != 0L || timeState == 0L) {
                                     alarmRepository.setAlarm(this@MainActivity, value)
+                                    val intent = Intent(this@MainActivity, CountdownService::class.java)
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                        startForegroundService(intent)
+                                    }
                                 }
                             }
                         ) {

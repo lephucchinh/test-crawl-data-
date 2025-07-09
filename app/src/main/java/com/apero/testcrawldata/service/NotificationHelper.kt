@@ -10,17 +10,20 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import com.apero.testcrawldata.MainActivity
 import com.apero.testcrawldata.R
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 
 class NotificationHelper(private val context: Context) {
+
     private val channelId = "countdown_channel_id"
     private val channelName = "Countdown Notification"
 
     private val notificationManager =
         context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-    init {
-        createNotificationChannel()
-    }
-    private fun createNotificationChannel() {
+
+    fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 channelId,
@@ -32,16 +35,37 @@ class NotificationHelper(private val context: Context) {
                 lightColor = Color.RED
                 enableVibration(true)
             }
-
-
             notificationManager.createNotificationChannel(channel)
         }
     }
 
-    fun showNotification(
+    fun createInitialNotification(
         title: String,
-        content: String,
-        notificationId: Int = 1001
+        content: String
+    ): NotificationCompat.Builder {
+        val intent = Intent(context, MainActivity::class.java)
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            0,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        return NotificationCompat.Builder(context, channelId)
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setContentTitle(title)
+            .setContentText(content)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(false)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+    }
+
+    fun showNotificationRealtime(
+        title: String,
+        timeStart: Long,
+        numberCountDown: StateFlow<Long>,
+        notificationId: Int = 1001,
+        scope: CoroutineScope
     ) {
         val intent = Intent(context, MainActivity::class.java)
         val pendingIntent = PendingIntent.getActivity(
@@ -51,16 +75,20 @@ class NotificationHelper(private val context: Context) {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val notification = NotificationCompat.Builder(context, channelId)
-            .setSmallIcon(R.drawable.ic_launcher_foreground) // Đặt icon tùy app bạn
-            .setContentTitle(title)
-            .setContentText(content)
-            .setContentIntent(pendingIntent)
-            .setAutoCancel(true)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .build()
+        scope.launch {
+            numberCountDown.collect { count ->
+                val notification = NotificationCompat.Builder(context, channelId)
+                    .setSmallIcon(R.drawable.ic_launcher_foreground)
+                    .setContentTitle(title)
+                    .setContentText("Còn lại: $count giây")
+                    .setContentIntent(pendingIntent)
+                    .setAutoCancel(false)
+                    .setOnlyAlertOnce(true)
+                    .setPriority(NotificationCompat.PRIORITY_HIGH)
+                    .build()
 
-        notificationManager.notify(notificationId, notification)
+                notificationManager.notify(notificationId, notification)
+            }
+        }
     }
-
 }
