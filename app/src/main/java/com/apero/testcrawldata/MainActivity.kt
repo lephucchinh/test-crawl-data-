@@ -3,45 +3,32 @@ package com.apero.testcrawldata
 import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.content.Intent
-import android.content.ServiceConnection
-import android.net.Uri
 import android.os.Bundle
-import android.os.IBinder
 import android.util.Log
-import android.webkit.WebView
-import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil.compose.AsyncImage
-import coil.compose.rememberAsyncImagePainter
-import coil.request.ImageRequest
 import com.apero.testcrawldata.alarmreceiver.repository.AlarmRepository
 import com.apero.testcrawldata.alarmreceiver.repository.AlarmRepositoryImpl
 import com.apero.testcrawldata.permissionadmin.MyDeviceAdminReceiver
 import com.apero.testcrawldata.ui.theme.TestCrawlDataTheme
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import org.jsoup.Jsoup
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 
 class MainActivity : ComponentActivity() {
     private val alarmRepository: AlarmRepository by lazy { AlarmRepositoryImpl() }
@@ -53,20 +40,38 @@ class MainActivity : ComponentActivity() {
         requestPermission()
         setContent {
             TestCrawlDataTheme {
+                val focusManager = LocalFocusManager.current
                 val timeState by alarmRepository.timeAlarm.collectAsStateWithLifecycle()
                 Surface(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clickable(
+                            indication = null,
+                            interactionSource = remember { MutableInteractionSource() }
+                        ) {
+                            focusManager.clearFocus()
+                        }
+                        .padding(16.dp),
                     color = MaterialTheme.colorScheme.background
                 ) {
                     Column(
-                        modifier = Modifier.fillMaxSize().padding(16.dp),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
                         verticalArrangement = Arrangement.Center,
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
+                        val textState = remember { mutableStateOf("") }
+
+                        MyEditTextFocusAware(textState = textState)
+
                         Button(
-                            modifier = Modifier.size(120.dp, 50.dp),
                             onClick = {
-                                alarmRepository.setAlarm(this@MainActivity, 5) }
+                                val value = textState.value.toLongOrNull() ?: 0L
+                                if(value != 0L || timeState == 0L) {
+                                    alarmRepository.setAlarm(this@MainActivity, value)
+                                }
+                            }
                         ) {
                             Text("Set Alarm")
                         }
@@ -91,4 +96,26 @@ class MainActivity : ComponentActivity() {
         startActivity(intent)
     }
 
+    @Composable
+    fun MyEditTextFocusAware(
+        textState: MutableState<String>
+    ) {
+        TextField(
+            value = textState.value,
+            onValueChange = { newValue ->
+                if (newValue.all { it.isDigit() }) {
+                    textState.value = newValue
+                }
+            },
+            label = { Text("Nhập số") },
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Number,
+                imeAction = ImeAction.Done
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            singleLine = true
+        )
+    }
 }
