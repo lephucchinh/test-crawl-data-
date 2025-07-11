@@ -23,6 +23,10 @@ class NotificationHelper(private val context: Context) {
     private val notificationManager =
         context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
+    fun onCancelNotification(notificationId: Int) {
+        notificationManager.cancel(notificationId)
+    }
+
     fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
@@ -80,10 +84,11 @@ class NotificationHelper(private val context: Context) {
                 val notification = NotificationCompat.Builder(context, channelId)
                     .setSmallIcon(R.drawable.ic_launcher_foreground)
                     .setContentTitle(title)
-                    .setContentText("Còn lại: $count giây")
+                    .setContentText("$timeStart : $count")
                     .setContentIntent(pendingIntent)
                     .setAutoCancel(false)
                     .setOnlyAlertOnce(true)
+                    .setOngoing(true)
                     .setPriority(NotificationCompat.PRIORITY_HIGH)
                     .build()
 

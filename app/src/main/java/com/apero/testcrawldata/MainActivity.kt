@@ -3,6 +3,7 @@ package com.apero.testcrawldata
 import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
@@ -22,6 +23,8 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.apero.testcrawldata.DI.DIContainer.alarmRepository
 import com.apero.testcrawldata.alarmreceiver.repository.AlarmRepository
@@ -40,6 +43,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         requestPermission()
+        requestNotificationPermission()
         setContent {
             TestCrawlDataTheme {
                 val focusManager = LocalFocusManager.current
@@ -123,5 +127,28 @@ class MainActivity : ComponentActivity() {
                 .padding(16.dp),
             singleLine = true
         )
+
+    }
+    private val NOTIFICATION_PERMISSION_CODE = 1001
+
+    private fun requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED) {
+
+                ActivityCompat.requestPermissions(
+                    this,
+                    arrayOf(android.Manifest.permission.POST_NOTIFICATIONS),
+                    NOTIFICATION_PERMISSION_CODE
+                )
+            } /*else {
+                // Quyền đã được cấp
+                showNotification()
+            }*/
+        } /*else {
+            // Không cần xin quyền trên Android dưới 13
+            showNotification()
+        }*/
     }
 }
+

@@ -3,6 +3,7 @@ package com.apero.testcrawldata.service
 import android.app.Service
 import android.content.Intent
 import android.os.Binder
+import android.os.Build
 import android.os.IBinder
 import com.apero.testcrawldata.DI.DIContainer.alarmRepository
 import com.apero.testcrawldata.alarmreceiver.repository.AlarmRepository
@@ -41,10 +42,16 @@ class CountdownService : Service() {
         // Sau đó bắt đầu cập nhật realtime
         notificationHelper.showNotificationRealtime(
             title = "Countdown Service",
-            timeStart = System.currentTimeMillis(),
+            timeStart = alarmRepository.requestTime,
             numberCountDown = alarmRepository.timeAlarm,
             notificationId = 1001,
             scope = serviceScope
         )
     }
+
+    fun stopNotificationAndService() {
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        stopSelf()        // Dừng service
+    }
+
 }

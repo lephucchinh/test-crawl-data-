@@ -5,5 +5,6 @@ import kotlinx.coroutines.flow.StateFlow
 
 interface AlarmRepository {
     val timeAlarm : StateFlow<Long>
+    var requestTime: Long
     fun setAlarm(context: Context, requestTime: Long)
 }

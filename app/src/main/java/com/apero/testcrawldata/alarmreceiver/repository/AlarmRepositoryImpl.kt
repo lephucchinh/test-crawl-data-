@@ -1,6 +1,5 @@
 package com.apero.testcrawldata.alarmreceiver.repository
 
-import android.Manifest
 import android.annotation.SuppressLint
 import android.app.AlarmManager
 import android.app.PendingIntent
@@ -10,8 +9,6 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.SystemClock
-import android.util.Log
-import androidx.annotation.RequiresPermission
 import com.apero.testcrawldata.alarmreceiver.AlarmReceiver
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -25,13 +22,14 @@ class AlarmRepositoryImpl : AlarmRepository {
 
     private val _timeAlarm = MutableStateFlow(0L)
     override val timeAlarm = _timeAlarm.asStateFlow()
+    override var requestTime: Long = 0
 
     private var countdownJob: Job? = null
 
     @SuppressLint("ScheduleExactAlarm")
-    override fun setAlarm(context: Context, requestTime: Long) {
+    override fun setAlarm(context: Context, requestTimeService: Long) {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-
+        requestTime = requestTimeService
         val intent = Intent(context, AlarmReceiver::class.java)
         val pendingIntent = PendingIntent.getBroadcast(
             context,
@@ -40,7 +38,7 @@ class AlarmRepositoryImpl : AlarmRepository {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val triggerTime = System.currentTimeMillis() + requestTime * 1000L
+        val triggerTime = System.currentTimeMillis() + requestTimeService * 1000L
         val alarmClockInfo = AlarmManager.AlarmClockInfo(triggerTime, pendingIntent)
 
 
@@ -50,7 +48,7 @@ class AlarmRepositoryImpl : AlarmRepository {
                     alarmClockInfo,
                     pendingIntent
                 )
-                startCountdown(requestTime)
+                startCountdown(requestTimeService)
             } else {
                 val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
                     data = Uri.parse("package:${context.packageName}")
@@ -62,7 +60,7 @@ class AlarmRepositoryImpl : AlarmRepository {
                 alarmClockInfo,
                 pendingIntent
             )
-            startCountdown(requestTime)
+            startCountdown(requestTimeService)
         }
     }
 
