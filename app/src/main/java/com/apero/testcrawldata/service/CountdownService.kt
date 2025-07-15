@@ -11,6 +11,7 @@ import com.apero.testcrawldata.alarmreceiver.repository.AlarmRepositoryImpl
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancelChildren
 
 class CountdownService : Service() {
 
@@ -52,6 +53,12 @@ class CountdownService : Service() {
     fun stopNotificationAndService() {
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()        // Dừng service
+    }
+    
+    override fun onDestroy() {
+        super.onDestroy()
+        // Cancel any ongoing coroutines
+        serviceScope.coroutineContext.cancelChildren()
     }
 
 }

@@ -31,6 +31,7 @@ import com.apero.testcrawldata.alarmreceiver.repository.AlarmRepository
 import com.apero.testcrawldata.alarmreceiver.repository.AlarmRepositoryImpl
 import com.apero.testcrawldata.permissionadmin.MyDeviceAdminReceiver
 import com.apero.testcrawldata.service.CountdownService
+import com.apero.testcrawldata.ui.components.CircularTimePicker
 import com.apero.testcrawldata.ui.theme.TestCrawlDataTheme
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -48,6 +49,10 @@ class MainActivity : ComponentActivity() {
             TestCrawlDataTheme {
                 val focusManager = LocalFocusManager.current
                 val timeState by alarmRepository.timeAlarm.collectAsStateWithLifecycle()
+                val isAlarmActive by alarmRepository.isAlarmActive.collectAsStateWithLifecycle()
+                
+                var selectedMinutes by remember { mutableStateOf(5) }
+                
                 Surface(
                     modifier = Modifier
                         .fillMaxSize()
@@ -56,8 +61,7 @@ class MainActivity : ComponentActivity() {
                             interactionSource = remember { MutableInteractionSource() }
                         ) {
                             focusManager.clearFocus()
-                        }
-                        .padding(16.dp),
+                        },
                     color = MaterialTheme.colorScheme.background
                 ) {
                     Column(
@@ -67,26 +71,71 @@ class MainActivity : ComponentActivity() {
                         verticalArrangement = Arrangement.Center,
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        val textState = remember { mutableStateOf("") }
-
-                        MyEditTextFocusAware(textState = textState)
-
+                        
+                        // Circular Time Picker
+                        CircularTimePicker(
+                            selectedMinutes = selectedMinutes,
+                            onTimeSelected = { minutes ->
+                                if (!isAlarmActive) {
+                                    selectedMinutes = minutes
+                                }
+                            },
+                            modifier = Modifier.padding(vertical = 32.dp)
+                        )
+                        
+                        Spacer(modifier = Modifier.height(32.dp))
+                        
+                        // Set Alarm / Cancel Button
                         Button(
                             onClick = {
-                                val value = textState.value.toLongOrNull() ?: 0L
-                                if(value != 0L || timeState == 0L) {
-                                    alarmRepository.setAlarm(this@MainActivity, value)
+                                if (isAlarmActive) {
+                                    // Cancel alarm
+                                    alarmRepository.cancelAlarm(this@MainActivity)
+                                    val intent = Intent(this@MainActivity, CountdownService::class.java)
+                                    stopService(intent)
+                                } else {
+                                    // Set alarm
+                                    val timeInSeconds = selectedMinutes * 60L
+                                    alarmRepository.setAlarm(this@MainActivity, timeInSeconds)
                                     val intent = Intent(this@MainActivity, CountdownService::class.java)
                                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                                         startForegroundService(intent)
                                     }
                                 }
-                            }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isAlarmActive) 
+                                    MaterialTheme.colorScheme.error 
+                                else 
+                                    MaterialTheme.colorScheme.primary
+                            )
                         ) {
-                            Text("Set Alarm")
+                            Text(
+                                text = if (isAlarmActive) "HỦY ALARM" else "ĐẶT ALARM",
+                                style = MaterialTheme.typography.titleMedium
+                            )
                         }
+                        
                         Spacer(modifier = Modifier.height(16.dp))
-                        Text(timeState.toString())
+                        
+                        // Countdown Display
+                        if (isAlarmActive) {
+                            val minutes = timeState / 60
+                            val seconds = timeState % 60
+                            
+                            Text(
+                                text = if (minutes > 0) {
+                                    String.format("Còn lại: %d:%02d", minutes, seconds)
+                                } else {
+                                    String.format("Còn lại: %d giây", seconds)
+                                },
+                                style = MaterialTheme.typography.headlineMedium,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
                     }
                 }
             }
@@ -106,29 +155,7 @@ class MainActivity : ComponentActivity() {
         startActivity(intent)
     }
 
-    @Composable
-    fun MyEditTextFocusAware(
-        textState: MutableState<String>
-    ) {
-        TextField(
-            value = textState.value,
-            onValueChange = { newValue ->
-                if (newValue.all { it.isDigit() }) {
-                    textState.value = newValue
-                }
-            },
-            label = { Text("Nhập số") },
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Number,
-                imeAction = ImeAction.Done
-            ),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            singleLine = true
-        )
 
-    }
     private val NOTIFICATION_PERMISSION_CODE = 1001
 
     private fun requestNotificationPermission() {

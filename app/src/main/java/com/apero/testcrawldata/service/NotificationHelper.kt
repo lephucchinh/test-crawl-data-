@@ -10,6 +10,7 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import com.apero.testcrawldata.MainActivity
 import com.apero.testcrawldata.R
+import com.apero.testcrawldata.alarmreceiver.CancelAlarmReceiver
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.flow.StateFlow
@@ -79,17 +80,41 @@ class NotificationHelper(private val context: Context) {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        // Create cancel action
+        val cancelIntent = Intent(context, CancelAlarmReceiver::class.java).apply {
+            action = CancelAlarmReceiver.ACTION_CANCEL_ALARM
+        }
+        val cancelPendingIntent = PendingIntent.getBroadcast(
+            context,
+            1,
+            cancelIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
         scope.launch {
             numberCountDown.collect { count ->
+                val minutes = count / 60
+                val seconds = count % 60
+                val timeText = if (minutes > 0) {
+                    String.format("%d:%02d", minutes, seconds)
+                } else {
+                    String.format("%d giây", seconds)
+                }
+                
                 val notification = NotificationCompat.Builder(context, channelId)
                     .setSmallIcon(R.drawable.ic_launcher_foreground)
                     .setContentTitle(title)
-                    .setContentText("$timeStart : $count")
+                    .setContentText("Tắt máy sau: $timeText")
                     .setContentIntent(pendingIntent)
                     .setAutoCancel(false)
                     .setOnlyAlertOnce(true)
                     .setOngoing(true)
                     .setPriority(NotificationCompat.PRIORITY_HIGH)
+                    .addAction(
+                        android.R.drawable.ic_menu_close_clear_cancel,
+                        "Hủy",
+                        cancelPendingIntent
+                    )
                     .build()
 
                 notificationManager.notify(notificationId, notification)

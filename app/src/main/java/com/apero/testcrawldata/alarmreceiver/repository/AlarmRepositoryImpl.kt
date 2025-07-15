@@ -22,16 +22,21 @@ class AlarmRepositoryImpl : AlarmRepository {
 
     private val _timeAlarm = MutableStateFlow(0L)
     override val timeAlarm = _timeAlarm.asStateFlow()
+    
+    private val _isAlarmActive = MutableStateFlow(false)
+    override val isAlarmActive = _isAlarmActive.asStateFlow()
+    
     override var requestTime: Long = 0
 
     private var countdownJob: Job? = null
+    private var pendingIntent: PendingIntent? = null
 
     @SuppressLint("ScheduleExactAlarm")
     override fun setAlarm(context: Context, requestTimeService: Long) {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         requestTime = requestTimeService
         val intent = Intent(context, AlarmReceiver::class.java)
-        val pendingIntent = PendingIntent.getBroadcast(
+        pendingIntent = PendingIntent.getBroadcast(
             context,
             0,
             intent,
@@ -39,15 +44,15 @@ class AlarmRepositoryImpl : AlarmRepository {
         )
 
         val triggerTime = System.currentTimeMillis() + requestTimeService * 1000L
-        val alarmClockInfo = AlarmManager.AlarmClockInfo(triggerTime, pendingIntent)
-
+        val alarmClockInfo = AlarmManager.AlarmClockInfo(triggerTime, pendingIntent!!)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             if (alarmManager.canScheduleExactAlarms()) {
                 alarmManager.setAlarmClock(
                     alarmClockInfo,
-                    pendingIntent
+                    pendingIntent!!
                 )
+                _isAlarmActive.value = true
                 startCountdown(requestTimeService)
             } else {
                 val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
@@ -58,10 +63,31 @@ class AlarmRepositoryImpl : AlarmRepository {
         } else {
             alarmManager.setAlarmClock(
                 alarmClockInfo,
-                pendingIntent
+                pendingIntent!!
             )
+            _isAlarmActive.value = true
             startCountdown(requestTimeService)
         }
+    }
+
+    override fun cancelAlarm(context: Context) {
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        
+        // Cancel the alarm
+        pendingIntent?.let { 
+            alarmManager.cancel(it)
+            it.cancel()
+        }
+        
+        // Stop countdown
+        countdownJob?.cancel()
+        countdownJob = null
+        
+        // Reset states
+        _timeAlarm.value = 0L
+        _isAlarmActive.value = false
+        requestTime = 0L
+        pendingIntent = null
     }
 
     private fun startCountdown(seconds: Long) {
@@ -72,7 +98,10 @@ class AlarmRepositoryImpl : AlarmRepository {
                 val remainingMillis = endTime - SystemClock.elapsedRealtime()
                 val remainingSeconds = (remainingMillis / 1000L).coerceAtLeast(0L)
                 _timeAlarm.emit(remainingSeconds)
-                if (remainingSeconds == 0L) break
+                if (remainingSeconds == 0L) {
+                    _isAlarmActive.value = false
+                    break
+                }
                 delay(200L) // delay ngắn để update UI mượt hơn
             }
         }

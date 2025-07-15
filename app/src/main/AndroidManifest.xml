@@ -22,6 +22,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.TestCrawlData">
         <receiver android:name=".alarmreceiver.AlarmReceiver" />
+        <receiver android:name=".alarmreceiver.CancelAlarmReceiver" />
         <receiver
             android:name=".permissionadmin.MyDeviceAdminReceiver"
             android:exported="false"
